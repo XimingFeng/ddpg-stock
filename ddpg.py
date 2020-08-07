@@ -29,25 +29,28 @@ class ActorCritic:
         replay_buffer = Buffer(self.state_dim, self.action_dim, batch_size=batch_size)
         actor_optimizer = tf.keras.optimizers.Adam(actor_lr)
         critic_optimizer = tf.keras.optimizers.Adam(critic_lr)
-        for _ in range(num_eps):
+        rewards = []
+        for eps in range(num_eps):
             current_state = env.reset()
             step_count = 0
             done = False
+            episodic_reward = 0
             while done is False:
-                # print(f"-------------- step {step_count} --------------------")
                 step_count += 1
                 current_state_tf = tf.expand_dims(tf.convert_to_tensor(np.squeeze(current_state)), axis=0)
                 actor_out = self.main_actor(current_state_tf)
                 action = self.get_action(actor_out)
                 nxt_state, reward, done, info = env.step(action)
+                episodic_reward += reward
                 replay_buffer.insert(current_state, action, reward, nxt_state, done)
                 if step_count % train_every_step == 0:
                     train_batch = replay_buffer.sample_batch()
                     self.one_step_train(train_batch, actor_optimizer, critic_optimizer)
                 current_state = nxt_state
-                # env.render()
             replay_buffer.reset_buffer()
-        env.close()
+            rewards.append(episodic_reward)
+            print(f"Episode {eps}, reward: {episodic_reward}")
+        return rewards
 
     def test(self, env):
         current_state = env.reset()
@@ -98,7 +101,7 @@ class ActorCritic:
         # Update target network weights
         self.update_target_weights()
 
-    def update_target_weights(self, rho=0.95):
+    def update_target_weights(self, rho=0.995):
         # Update target critic weights a little bit towards main critic's weights
         new_weights = []
         target_critic_weights = self.target_critic.weights
@@ -117,7 +120,7 @@ class ActorCritic:
         inputs = layers.Input(shape=self.state_dim)
         out = layers.Dense(512, activation="relu")(inputs)
         out = layers.Dense(self.action_dim[0], activation=None)(out)
-        outputs = layers.GaussianNoise(stddev=0.1)(out)
+        outputs = layers.GaussianNoise(stddev=0.2)(out)
         return Model(inputs, outputs)
 
     def build_critic(self):
