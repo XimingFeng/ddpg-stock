@@ -8,7 +8,8 @@ import pandas as pd
 
 class ActorCritic:
 
-    def __init__(self, state_dim, action_dim, low_bound_act=-2, high_bound_act=2, gamma=0.99, actor_hp_param=dict(), critic_hp_param=dict()):
+    def __init__(self, state_dim, action_dim, low_bound_act=-2, high_bound_act=2, gamma=0.99,
+                 ,actor_hp_param=dict(), critic_hp_param=dict()):
         self.gamma = tf.convert_to_tensor(gamma)
         self.action_dim = action_dim
         self.state_dim = state_dim
