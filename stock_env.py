@@ -1,54 +1,90 @@
 import pandas as pd
+from datetime import datetime
+import numpy as np
 
 class StockEnv():
-    def __init__(self, features=["open", "high", "low", "close"], window_len=50,
-                 codes=['AAPL', 'V', 'BABA', 'ADBE', 'SNE'], start_date='2015-01-05', end_date="2017-12-29"):
+    def __init__(self, features, asset_codes, data_path, window_len=50, start_date='2015-01-05', end_date="2017-12-29"):
         self.features = features
         self.window_len = window_len
-        self.codes = codes
-        self.num_asset = len(codes) + 1
+        self.asset_codes = asset_codes
+        self.num_assets = len(asset_codes) + 1
         self.num_features = len(features)
         self.start_date = start_date
         self.end_date = end_date
-        raw_data = pd.read_csv("AmericaStock.csv", index_col='time', parse_dates=True)
-        self.parse_raw_data(raw_data)
+        self.date_range = pd.date_range(self.start_date, self.end_date)
+        self.date_diff = len(self.date_range)
+        self.t = 0
+        asset_dict = self.clean_raw_data(data_path)
+        self.states = self.get_states(asset_dict)
+        self.price_change_ratios = self.get_price_change_ratios(asset_dict)
+        self.alloc_history = np.zeros(shape=[self.date_diff, self.num_assets])
 
-    def parse_raw_data(self, raw_data):
-        data = raw_data[self.features]
-        data = data[self.start_date: self.end_date]
-        date_range = pd.date_range(self.start_date, self.end_date)
+    def clean_raw_data(self, file_path):
+        raw_data = pd.read_csv(file_path, index_col='time', parse_dates=True)
+        cols = self.features + ["code"]
+        data = raw_data[cols]
+        data = data.loc[self.start_date: self.end_date]
         asset_dict = dict()
-        data_np = np.zeros(shape=(self.num_asset, ))
-        for code in self.codes:
-            asset_data = data[data['code'] == code]
+        for code in self.asset_codes:
+            asset_data = data[data['code'] == code][self.features]
+
             # include date that has no data, filled them with NaN value
-            asset_data = asset_data.reindex(date_range).sort_index()
+            asset_data = asset_data.reindex(self.date_range).sort_index()
+
             # fill NaN with previously available data for 'close' column
-            asset_data['close'].fillna(method='ffill')
+            asset_data['close'].fillna(method='ffill', inplace=True)
+
             # fill NaN with close price for the other features
             # normalize each feature with the closing price of last day
             base_price = asset_data['close'][-1]
-            asset_data['close'] /= base_price
-            if 'high' in self.features:
-                asset_data['high'].fillna(asset_data['close'], inplace=True)
-                asset_data['high'] /= base_price
-            if 'low' in self.features:
-                asset_data['low'].fillna(asset_data['close'], inplace=True)
-                asset_data['low'] /= base_price
-            if 'open' in self.features:
-                asset_data['open'].fillna(asset_data['close'], inplace=True)
-                asset_data['open'] /= base_price
-            
+            for feat in self.features:
+                if feat != "close":
+                    asset_data[feat].fillna(asset_data['close'], inplace=True)
+                    asset_data[feat] = asset_data[feat] / base_price
+            asset_data["close"] /= base_price
             asset_dict[code] = asset_data
+        return asset_dict
 
+    def get_states(self, asset_dict):
+        """
+        Return a list of state that can feed into agent
+        Shape of states (number of assets, window length, number of features)
+        Note that the number of assets does not include money (as an asset)
+        :param asset_dict:
+        :return:
+        """
+        states = []
+        for i in range(self.date_diff - self.window_len):
+            # exclude money for state
+            state = np.ones(shape=(self.num_assets - 1, self.window_len, self.num_features))
+            asset_idx = 0
+            for code in self.asset_codes:
+                asset_window = asset_dict[code][i: i + self.window_len]
+                state[asset_idx, :, :] = asset_window.to_numpy()
+                asset_idx += 1
+            states.append(state)
+        return states
 
+    def get_price_change_ratios(self, asset_dict):
+        """
+        get the daily price change ratio. First date the ratio is set to 1 for all asset
+        this is y_t in the paper
+        :param asset_dict:
+        :return:
+        """
+        price_change_ratios = np.ones(shape=(self.date_diff, self.num_assets))
+        for i in range(1, self.date_diff):
+            if i > 0:
+                asset_idx = 1
+                for code in self.asset_codes:
+                    price_change_ratios[i, asset_idx] = \
+                        asset_dict[code].iloc[i]['close'] / asset_dict[code].iloc[i - 1]['close']
+                    asset_idx += 1
+        return price_change_ratios
 
+    def step(self, action):
 
-
-
-
-
-    def step(self):
+        price_change_ratios
         pass
 
     def reset(self):
