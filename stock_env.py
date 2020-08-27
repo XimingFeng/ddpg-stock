@@ -62,6 +62,7 @@ class StockEnv():
                 asset_window = asset_dict[code][i: i + self.window_len]
                 state[asset_idx, :, :] = asset_window.to_numpy()
                 asset_idx += 1
+            state.reshape(1, self.num_assets - 1, self.window_len, self.num_features)
             states.append(state)
         return states
 
@@ -84,11 +85,32 @@ class StockEnv():
 
     def step(self, action):
 
-        price_change_ratios
-        pass
+        # y_t: change of price
+        price_change_ratio = self.price_change_ratios[self.t]
+
+        # the allocation at the end of previous period
+        prev_trade_end_alloc = self.alloc_history[-1]
+
+        # transaction cost occurs when buy and sell
+        trans_cost = self.mu * np.abs(action[1:] - prev_trade_end_alloc[1:]).sum()
+
+        reward = np.log(action * price_change_ratio - trans_cost)
+
+        trade_end_alloc = (action * price_change_ratio) / np.dot(action * price_change_ratio)
+        self.alloc_history.append(trade_end_alloc)
+
+        self.t += 1
+        next_state = self.states[t]
+        return reward, next_state
+
 
     def reset(self):
-        pass
+        self.t = self.window_len - 1
+        # Initial allocation is all in cash / money
+        init_alloc = np.zeros(self.num_assets)
+        init_alloc[0] = 1
+        self.alloc_history = np.zeros(shape=[self.date_diff, self.num_assets])
+        self.alloc_history[0, :] = init_alloc
 
     def render(self):
         pass
