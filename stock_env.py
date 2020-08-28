@@ -3,7 +3,8 @@ from datetime import datetime
 import numpy as np
 
 class StockEnv():
-    def __init__(self, features, asset_codes, data_path, window_len=50, start_date='2015-01-05', end_date="2017-12-29"):
+    def __init__(self, features, asset_codes, data_path, mu=0.0025,
+                 window_len=50, start_date='2015-01-05', end_date="2017-12-29"):
         self.features = features
         self.window_len = window_len
         self.asset_codes = asset_codes
@@ -11,13 +12,14 @@ class StockEnv():
         self.num_features = len(features)
         self.start_date = start_date
         self.end_date = end_date
+        self.mu = mu
         self.date_range = pd.date_range(self.start_date, self.end_date)
         self.date_diff = len(self.date_range)
         self.t = 0
-        asset_dict = self.clean_raw_data(data_path)
-        self.states = self.get_states(asset_dict)
-        self.price_change_ratios = self.get_price_change_ratios(asset_dict)
-        self.alloc_history = np.zeros(shape=[self.date_diff, self.num_assets])
+        self.asset_dict = self.clean_raw_data(data_path)
+        self.states = self.get_states(self.asset_dict)
+        self.price_change_ratios = self.get_price_change_ratios(self.asset_dict)
+        self.alloc_history = []
 
     def clean_raw_data(self, file_path):
         raw_data = pd.read_csv(file_path, index_col='time', parse_dates=True)
@@ -96,23 +98,29 @@ class StockEnv():
 
         reward = np.log(action * price_change_ratio - trans_cost)
 
-        trade_end_alloc = (action * price_change_ratio) / np.dot(action * price_change_ratio)
+        trade_end_alloc = (action * price_change_ratio) / np.dot(action, price_change_ratio)
         self.alloc_history.append(trade_end_alloc)
 
         self.t += 1
-        next_state = self.states[t]
+        next_state = self.states[self.t - self.window_len]
         return reward, next_state
 
-
     def reset(self):
-        self.t = self.window_len - 1
+        self.t = self.window_len
+        cur_date = self.date_range.to_pydatetime()[self.t].strftime('%Y-%m-%d')
+        self.alloc_history = []
         # Initial allocation is all in cash / money
+        self.alloc_history = []
         init_alloc = np.zeros(self.num_assets)
         init_alloc[0] = 1
-        self.alloc_history = np.zeros(shape=[self.date_diff, self.num_assets])
-        self.alloc_history[0, :] = init_alloc
+        self.alloc_history.append(init_alloc)
+        return self.states[self.t - self.window_len]
 
     def render(self):
+        cur_date = self.date_range.to_pydatetime()[self.t].strftime('%Y-%m-%d')
+        print(f"We are at date {cur_date}")
+        print(f'allocation of portfolio at the end of prev date: {self.alloc_history[-1]}')
+
         pass
 
     ############################# Utility #########################
