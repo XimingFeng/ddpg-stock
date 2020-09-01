@@ -88,23 +88,24 @@ class StockEnv():
 
         # y_t: change of price
         price_change_ratio = self.price_change_ratios[self.t]
-        print(f'price change ratio of today is {price_change_ratio}')
+
         # the allocation at the end of previous period
         prev_trade_end_alloc = self.alloc_history[-1]
 
         # transaction cost occurs when buy and sell
         trans_cost = self.mu * np.abs(action[1:] - prev_trade_end_alloc[1:]).sum()
-        print(f'Transaction cost is {trans_cost}')
 
-        reward = np.log(action * price_change_ratio - trans_cost)
+        reward = np.log(np.dot(action, price_change_ratio) - trans_cost)
 
         self.t += 1
 
         done = False
-        if self.t == self.date_diff:
+        if self.t == self.date_diff - 1:
             done = True
-
-        return reward,
+        next_state = None
+        if not done:
+            next_state = self.states[self.t]
+        return reward, done, next_state
 
 
 
