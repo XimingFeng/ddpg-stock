@@ -75,32 +75,41 @@ class StockEnv():
         :param asset_dict:
         :return:
         """
-        price_change_ratios = np.ones(shape=(self.date_diff, self.num_assets))
-        for i in range(1, self.date_diff):
-            if i > 0:
-                asset_idx = 1
-                for code in self.asset_codes:
-                    price_change_ratios[i, asset_idx] = \
-                        asset_dict[code].iloc[i]['close'] / asset_dict[code].iloc[i - 1]['close']
-                    asset_idx += 1
+        price_change_ratios = np.ones(shape=(self.date_diff - 1, self.num_assets))
+        for i in range(0, self.date_diff - 1):
+            asset_idx = 1
+            for code in self.asset_codes:
+                price_change_ratios[i, asset_idx] = \
+                    asset_dict[code].iloc[i + 1]['close'] / asset_dict[code].iloc[i]['close']
+                asset_idx += 1
         return price_change_ratios
 
     def step(self, action):
 
         # y_t: change of price
         price_change_ratio = self.price_change_ratios[self.t]
-
+        print(f'price change ratio of today is {price_change_ratio}')
         # the allocation at the end of previous period
         prev_trade_end_alloc = self.alloc_history[-1]
 
         # transaction cost occurs when buy and sell
         trans_cost = self.mu * np.abs(action[1:] - prev_trade_end_alloc[1:]).sum()
+        print(f'Transaction cost is {trans_cost}')
 
         reward = np.log(action * price_change_ratio - trans_cost)
 
+        self.t += 1
+
+        done = False
+        if self.t == self.date_diff:
+            done = True
+
+        return reward,
+
+
 
     def reset(self):
-        self.t = self.window_len
+        self.t = self.window_len - 1
         cur_date = self.date_range.to_pydatetime()[self.t].strftime('%Y-%m-%d')
         self.alloc_history = []
         # Initial allocation is all in cash / money
