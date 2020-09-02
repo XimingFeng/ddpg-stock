@@ -21,6 +21,7 @@ class StockEnv():
         self.price_change_ratios = self.get_price_change_ratios(self.asset_dict)
         self.alloc_history = []
 
+
     def clean_raw_data(self, file_path):
         raw_data = pd.read_csv(file_path, index_col='time', parse_dates=True)
         cols = self.features + ["code"]
@@ -58,11 +59,11 @@ class StockEnv():
         states = []
         for i in range(self.date_diff - self.window_len):
             # exclude money for state
-            state = np.ones(shape=(self.num_assets - 1, self.window_len, self.num_features))
+            state = np.ones(shape=(1, self.num_assets - 1, self.window_len, self.num_features))
             asset_idx = 0
             for code in self.asset_codes:
                 asset_window = asset_dict[code][i: i + self.window_len]
-                state[asset_idx, :, :] = asset_window.to_numpy()
+                state[0, asset_idx, :, :] = asset_window.to_numpy()
                 asset_idx += 1
             state.reshape(1, self.num_assets - 1, self.window_len, self.num_features)
             states.append(state)
@@ -104,7 +105,7 @@ class StockEnv():
             done = True
         next_state = None
         if not done:
-            next_state = self.states[self.t]
+            next_state = self.states[self.t - self.window_len + 1]
         return reward, done, next_state
 
 

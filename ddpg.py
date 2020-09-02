@@ -9,10 +9,13 @@ import pandas as pd
 class ActorCritic:
 
     def __init__(self, state_dim, action_dim, low_bound_act=-2, high_bound_act=2, gamma=0.99,
-                 ,actor_hp_param=dict(), critic_hp_param=dict()):
+                 actor_hp_param=dict(), critic_hp_param=dict()):
         self.gamma = tf.convert_to_tensor(gamma)
         self.action_dim = action_dim
         self.state_dim = state_dim
+        self.num_assets = state_dim[1]
+        self.window_len = state_dim[2]
+        self.num_features = state_dim[3]
         self.main_actor = self.build_actor()
         self.main_critic = self.build_critic()
         self.target_actor = self.build_actor()
@@ -119,15 +122,23 @@ class ActorCritic:
 
     def build_actor(self):
         inputs = layers.Input(shape=self.state_dim)
-        out = layers.Dense(512, activation="relu")(inputs)
-        out = layers.Dense(self.action_dim[0], activation=None)(out)
-        outputs = layers.GaussianNoise(stddev=0.2)(out)
+        out = layers.Conv2D(filters=32,
+                            kernel_size=(1, self.window_len),
+                            strides=1,
+                            padding="VALID")(inputs)
+        out = layers.BatchNormalization()(out)
+        out = layers.Conv2D(filters=1,
+                            kernel_size=1,
+                            strides=1, padding="VALID")(out)
+        out = layers.BatchNormalization()(out)
+        out = layers.Flatten()(out)
+
         return Model(inputs, outputs)
 
     def build_critic(self):
         # state as input
         state_input = layers.Input(shape=self.state_dim)
-        state_out = layers.Dense(16, activation="relu")(state_input)
+
 
         # action as input
         action_input = layers.Input(shape=self.action_dim)
@@ -138,5 +149,4 @@ class ActorCritic:
 
         outputs = layers.Dense(1)(out)
         return Model([state_input, action_input], outputs)
-
 

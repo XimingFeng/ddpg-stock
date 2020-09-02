@@ -32,11 +32,11 @@ class Buffer:
         """
         idx = self.buffer_counter % self.buffer_capacity
 
-        self.state_buffer[idx] = np.squeeze(state)
-        self.action_buffer[idx] = np.squeeze(action)
-        self.reward_buffer[idx] = np.squeeze(reward)
-        self.next_state_buffer[idx] = np.squeeze(nxt_state)
-        self.is_term_buffer[idx] = np.squeeze(is_term)
+        self.state_buffer[idx] = state
+        self.action_buffer[idx] = action
+        self.reward_buffer[idx] = reward
+        self.next_state_buffer[idx] = nxt_state
+        self.is_term_buffer[idx] = is_term
 
         self.buffer_counter += 1
 
