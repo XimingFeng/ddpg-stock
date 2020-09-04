@@ -59,7 +59,7 @@ class StockEnv():
         states = []
         for i in range(self.date_diff - self.window_len):
             # exclude money for state
-            state = np.ones(shape=(1, self.num_assets - 1, self.window_len, self.num_features))
+            state = np.ones(shape=(1, self.num_assets - 1, self.window_len, self.num_features), dtype="float32")
             asset_idx = 0
             for code in self.asset_codes:
                 asset_window = asset_dict[code][i: i + self.window_len]
@@ -76,7 +76,7 @@ class StockEnv():
         :param asset_dict:
         :return:
         """
-        price_change_ratios = np.ones(shape=(self.date_diff - 1, self.num_assets))
+        price_change_ratios = np.ones(shape=(self.date_diff - 1, self.num_assets), dtype="float32")
         for i in range(0, self.date_diff - 1):
             asset_idx = 1
             for code in self.asset_codes:
@@ -116,7 +116,7 @@ class StockEnv():
         self.alloc_history = []
         # Initial allocation is all in cash / money
         self.alloc_history = []
-        init_alloc = np.zeros(self.num_assets)
+        init_alloc = np.zeros(self.num_assets, dtype="float32")
         init_alloc[0] = 1
         self.alloc_history.append(init_alloc)
         return self.states[self.t - self.window_len]
