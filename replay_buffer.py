@@ -3,9 +3,9 @@ import numpy as np
 
 class Buffer:
 
-    def __init__(self, state_dim, action_dim, buffer_capacity=1000, batch_size=32):
+    def __init__(self, state_dim, action_dim, buffer_capacity=1000):
         self.buffer_capacity = buffer_capacity
-        self.batch_size = batch_size
+        # self.batch_size = batch_size
         self.buffer_counter = 0
         self.state_dim = state_dim
         self.action_dim = action_dim
@@ -19,6 +19,7 @@ class Buffer:
         self.reward_buffer = np.zeros((self.buffer_capacity, 1))
         self.next_state_buffer = np.zeros(state_buffer_dim)
         self.is_term_buffer = np.zeros((self.buffer_capacity, 1))
+        self.buffer_counter = 0
 
     def insert(self, state, action, reward, nxt_state, is_term):
         """
@@ -40,14 +41,17 @@ class Buffer:
 
         self.buffer_counter += 1
 
-    def sample_batch(self):
+    def sample_batch(self, batch_size=1):
         """
         sample a batch from replay buffer
         :return:
         """
+        # sample_idxs = np.random.choice(low=0, high=self.buffer_capacity, size=batch_size)
+
         num_replays = self.buffer_counter if self.buffer_counter < self.buffer_capacity else self.buffer_capacity
-        if self.buffer_counter >= self.batch_size:
-            batch_idxs = np.random.choice(num_replays, self.batch_size, replace=False)
+
+        if self.buffer_counter >= batch_size:
+            batch_idxs = np.random.choice(num_replays, batch_size, replace=False)
         else:
             batch_idxs = np.random.choice(num_replays, self.buffer_counter, replace=False)
 

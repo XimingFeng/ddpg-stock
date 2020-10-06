@@ -46,6 +46,7 @@ class StockEnv():
                     asset_data[feat] = asset_data[feat] / base_price
             asset_data["close"] /= base_price
             asset_dict[code] = asset_data
+
         return asset_dict
 
     def get_states(self, asset_dict):
@@ -57,7 +58,7 @@ class StockEnv():
         :return:
         """
         states = []
-        for i in range(self.date_diff - self.window_len):
+        for i in range(self.date_diff - self.window_len + 1):
             # exclude money for state
             state = np.ones(shape=(1, self.num_assets - 1, self.window_len, self.num_features), dtype="float32")
             asset_idx = 0
@@ -87,45 +88,46 @@ class StockEnv():
 
     def step(self, action):
 
+        # print(f"We are at time step: {self.t}")
+
         # y_t: change of price
         price_change_ratio = self.price_change_ratios[self.t]
+        # print(f"stock price change after the action: {price_change_ratio}")
 
         # the allocation at the end of previous period
         prev_trade_end_alloc = self.alloc_history[-1]
 
         # transaction cost occurs when buy and sell
         trans_cost = self.mu * np.abs(action[1:] - prev_trade_end_alloc[1:]).sum()
-
+        # print(f"transaction cost: {trans_cost}")
+        # print(f"reward before log: {np.dot(action, price_change_ratio) - trans_cost}")
         reward = np.log(np.dot(action, price_change_ratio) - trans_cost)
 
         self.t += 1
+        next_state = self.states[self.t - self.window_len + 1]
 
         done = False
         if self.t == self.date_diff - 1:
             done = True
-        next_state = None
-        if not done:
-            next_state = self.states[self.t - self.window_len + 1]
         return reward, done, next_state
 
 
 
     def reset(self):
         self.t = self.window_len - 1
-        cur_date = self.date_range.to_pydatetime()[self.t].strftime('%Y-%m-%d')
+        # cur_date = self.date_range.to_pydatetime()[self.t].strftime('%Y-%m-%d')
         self.alloc_history = []
         # Initial allocation is all in cash / money
         self.alloc_history = []
         init_alloc = np.zeros(self.num_assets, dtype="float32")
         init_alloc[0] = 1
         self.alloc_history.append(init_alloc)
-        return self.states[self.t - self.window_len]
+        return self.states[self.t - self.window_len + 1]
 
     def render(self):
         cur_date = self.date_range.to_pydatetime()[self.t].strftime('%Y-%m-%d')
         print(f"We are at date {cur_date}")
         print(f'allocation of portfolio at the end of prev date: {self.alloc_history[-1]}')
-
         pass
 
     ############################# Utility #########################
